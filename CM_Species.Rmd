@@ -1,0 +1,119 @@
+---
+title: "*Sphagnum* Conditioned Microbiome Across Moss Species Data and Figures"
+author: "Alyssa Carrell"
+date: "7/9/2019"
+output:
+  pdf_document:
+    toc: yes
+  html_document:
+    df_print: paged
+    code_folding: hide
+    fig_caption: yes
+    number_sections: no
+    toc: yes
+---
+
+# Introduction
+The use of microbiomes to select for specific plant host phenotypic response to environment have been demonstrated in recent studies. However, the underlying mechanisms for microbial mediated plant phenotypic response is unknown. Here we explore the mechanisms for microbial mediated host tolerance of elevated temperature. Microbiomes conditioned to ambient or elevated temperature were applied to moss and subjected to ambient or elevated temperatures. Fluorcam measurements were performed each week and the experiment was harvested at 4 weeks to assess plant growth and microbiome composition.
+
+# Experimental details
+
+Experiment duration was 4 weeks with material analyzed or collected for:
+Fluorcam, area growth, 16S profile, and RNAseq
+	
+**Methods**	
+Conditioned microbe extraction and inoculation	
+
+From each treatment, 100 g of S. fallax tissue was diced with sterile razor blade and pulverized in BG11 -N, pH 5.5 with a mortar and pestle. The resulting suspension was filtered through Mira Cloth and stored at 4 C until application. The microbes were then pelleted and resuspended in BG11 -N medium (pH5.5). A single capitula of axenic Sphagnum fallax or magellanicum was added to each well of a 12 well plate and inoculated with 2 ml of +0 microbiome, 4.5 microbiome +9 microbiome, or sterile media. Additionally, Sphagnum fuscum were inoculated wiht +0 or +9 microbiome. Warming conditions were determined from June 2019 temperatures 
+
+ 
+```{r warning=FALSE, results='hide', message=FALSE}
+library(tidyverse)
+library(car)
+library(rcompanion)
+library(FSA)
+library(agricolae)
+library(reshape2)
+```
+
+
+```{r setup, include=FALSE}
+library(captioner)
+fig_nums <- captioner(prefix = "Fig.")
+fig.1_cap <- fig_nums(name = "fig_1", 
+                        caption = "Growth rate of conditioned microbiome applied to Sphagnum fallax, Sphagnum Magellanicum or Sphagnum fuscum")
+
+```
+
+```{r, echo = FALSE, message = FALSE}
+
+#import phenotype data into R
+Condition_Micro_data <- read.delim("Condition_Micro.txt")
+
+CM<-spread(Condition_Micro_data, Week, TotalArea)
+CM$Growth.rate.cmperday <- (CM$Week.4-CM$Week.0)/21
+
+```
+
+# Growth Phenotypes for each moss across growth chamber treatments
+
+```{r, echo=FALSE, fig.width = 10, fig.height=8, fig.align='center',fig.cap = fig.1_cap}
+
+CM.sum<-CM %>%
+  group_by(Moss, Chamber, Microbe) %>%
+  summarise( N = length(Growth.rate.cmperday),
+    mean = mean(Growth.rate.cmperday),
+    sd = sd(Growth.rate.cmperday),
+    se = sd/sqrt(N)
+  )%>%
+  ggplot(aes(x=Chamber, y =mean, fill=Microbe))+
+   geom_bar(position=position_dodge(), stat = "identity") +
+  geom_errorbar(aes(ymin=mean-se, ymax=mean+se), width=0.1, position=position_dodge(.9)) +
+  xlab(" Growth chamber") +ylab("Growth rate (cm/day)") + theme_classic() + theme(axis.text=element_text(size=12),
+        axis.text.x = element_text(angle = 0, vjust = 0.5),
+        axis.title=element_text(size=16,face="bold"),
+        legend.text=element_text(size=16))+
+  facet_grid(.~Moss,scales="free")+  
+  theme(strip.background = element_rect(fill="black"),
+        strip.text = element_text(color="white",size=16))+
+  guides(fill=guide_legend(keywidth = 0.75,keyheight = 0.75)) 
+
+CM.sum
+
+```
+
+#Fallax statistics
+``` {r}
+CM.Fallax<- CM %>%
+  filter(Moss=="Fallax")
+  
+CM.Fall.rank <- rank(CM.Fallax$Growth.rate.cmperday)
+CM.Fallax <- cbind ( CM.Fallax, CM.Fall.rank)
+ranked.CM.Fall.aov <- aov(CM.Fall.rank ~ Chamber + Microbe + Chamber:Microbe, data = CM.Fallax)
+Anova(ranked.CM.Fall.aov, type = 3)
+TukeyHSD(ranked.CM.Fall.aov)
+```
+
+#Fuscum statistics
+``` {r}
+CM.Fuscum<- CM %>%
+  filter(Moss=="Fuscum")
+  
+CM.Fuscum.rank <- rank(CM.Fuscum$Growth.rate.cmperday)
+CM.Fuscum <- cbind ( CM.Fuscum, CM.Fuscum.rank)
+ranked.CM.Fuscum.aov <- aov(CM.Fuscum.rank ~ Chamber + Microbe + Chamber:Microbe, data = CM.Fuscum)
+Anova(ranked.CM.Fuscum.aov, type = 3)
+TukeyHSD(ranked.CM.Fuscum.aov)
+```
+#Magellanicum statistics
+``` {r}
+CM.Mag<- CM %>%
+  filter(Moss=="Magellanicum")
+  
+CM.Mag.rank <- rank(CM.Mag$Growth.rate.cmperday)
+CM.Mag <- cbind ( CM.Mag, CM.Mag.rank)
+ranked.CM.Mag.aov <- aov(CM.Mag.rank ~ Chamber + Microbe + Chamber:Microbe, data = CM.Mag)
+Anova(ranked.CM.Mag.aov, type = 3)
+TukeyHSD(ranked.CM.Mag.aov)
+```
+
